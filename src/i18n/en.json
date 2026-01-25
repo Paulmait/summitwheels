@@ -1,0 +1,58 @@
+{
+  "common": {
+    "back": "Back",
+    "play": "Play",
+    "settings": "Settings",
+    "loading": "Loading..."
+  },
+  "game": {
+    "title": "Summit Wheels",
+    "tapToStart": "TAP TO START",
+    "playAgain": "PLAY AGAIN",
+    "crashed": "CRASHED!",
+    "outOfFuel": "OUT OF FUEL!",
+    "runOver": "RUN OVER",
+    "newBest": "NEW BEST!",
+    "distance": "Distance",
+    "best": "Best",
+    "coins": "Coins",
+    "time": "Time",
+    "fuel": "FUEL",
+    "low": "LOW!",
+    "gas": "GAS",
+    "brake": "BRAKE"
+  },
+  "garage": {
+    "title": "Garage",
+    "yourStats": "Your Stats",
+    "bestDistance": "Best Distance",
+    "totalRuns": "Total Runs",
+    "totalCoins": "Total Coins Earned",
+    "upgrades": "Upgrades",
+    "upgrade": "Upgrade",
+    "max": "MAX",
+    "engine": "Engine",
+    "tires": "Tires",
+    "suspension": "Suspension",
+    "fuelTank": "Fuel Tank"
+  },
+  "settings": {
+    "title": "Settings",
+    "audio": "Audio",
+    "soundEffects": "Sound Effects",
+    "music": "Music",
+    "sfxVolume": "SFX Volume",
+    "musicVolume": "Music Volume",
+    "about": "About",
+    "version": "Summit Wheels v1.0.0"
+  },
+  "ads": {
+    "revive": "REVIVE",
+    "doubleCoins": "DOUBLE COINS",
+    "watchAd": "Watch Ad"
+  },
+  "units": {
+    "meters": "m",
+    "seconds": "s"
+  }
+}
