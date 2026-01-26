@@ -15,7 +15,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.guampaul.summitwheels"
+      "bundleIdentifier": "com.guampaul.summitwheels",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +25,12 @@
       },
       "package": "com.guampaul.summitwheels",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -33,6 +39,12 @@
       "eas": {
         "projectId": "2a1c38a5-3f1a-40df-90b6-816ff47a377e"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2a1c38a5-3f1a-40df-90b6-816ff47a377e"
     }
   }
 }
