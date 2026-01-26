@@ -36,12 +36,15 @@ summit-wheels/
 │   │   └── progression/
 │   │       └── __tests__/
 │   │           └── upgrades.test.ts  # 11 tests - Upgrades
-│   └── i18n/
+│   ├── i18n/
+│   │   └── __tests__/
+│   │       └── i18n.test.ts          # 14 tests - Translations
+│   └── hooks/
 │       └── __tests__/
-│           └── i18n.test.ts          # 14 tests - Translations
+│           └── useEulaAcceptance.test.ts  # 5 tests - EULA
 ```
 
-**Total: 107 tests across 9 test suites**
+**Total: 112 tests across 10 test suites**
 
 ## Golden Path Smoke Test
 
