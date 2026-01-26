@@ -9,6 +9,8 @@ import {
   calculateVehicleStats,
   VehicleStats,
 } from '../config/vehicleConfig';
+import { VehicleId, VEHICLES, getVehicle } from '../config/vehicles';
+import { StageId, STAGES, getStage } from '../config/stages';
 
 export type UpgradeLevels = Record<UpgradeType, number>;
 
@@ -18,6 +20,24 @@ export type PlayerProgress = {
   bestDistance: number;
   totalRuns: number;
   totalCoins: number;
+  /** Unlocked vehicle IDs (jeep is always unlocked) */
+  unlockedVehicles: VehicleId[];
+  /** Currently selected vehicle */
+  selectedVehicle: VehicleId;
+  /** Per-vehicle upgrade levels */
+  vehicleUpgrades: Record<VehicleId, UpgradeLevels>;
+  /** Unlocked stage IDs (countryside is always unlocked) */
+  unlockedStages: StageId[];
+  /** Currently selected stage */
+  selectedStage: StageId;
+  /** Total air time accumulated (seconds) */
+  totalAirTime: number;
+  /** Total tricks landed */
+  totalTricks: number;
+  /** Highest combo achieved */
+  highestCombo: number;
+  /** Stages played (for achievements) */
+  stagesPlayed: StageId[];
 };
 
 export type UpgradeInfo = {
@@ -31,17 +51,38 @@ export type UpgradeInfo = {
 
 const STORAGE_KEY = '@summit_wheels_progress';
 
+const DEFAULT_UPGRADES: UpgradeLevels = {
+  engine: 0,
+  tires: 0,
+  suspension: 0,
+  fuelTank: 0,
+};
+
 const DEFAULT_PROGRESS: PlayerProgress = {
   coins: 0,
-  upgrades: {
-    engine: 0,
-    tires: 0,
-    suspension: 0,
-    fuelTank: 0,
-  },
+  upgrades: { ...DEFAULT_UPGRADES },
   bestDistance: 0,
   totalRuns: 0,
   totalCoins: 0,
+  // Vehicle tracking
+  unlockedVehicles: ['jeep'], // Jeep is free starter
+  selectedVehicle: 'jeep',
+  vehicleUpgrades: {
+    jeep: { ...DEFAULT_UPGRADES },
+    monster_truck: { ...DEFAULT_UPGRADES },
+    dune_buggy: { ...DEFAULT_UPGRADES },
+    tank: { ...DEFAULT_UPGRADES },
+    super_car: { ...DEFAULT_UPGRADES },
+    moon_rover: { ...DEFAULT_UPGRADES },
+  },
+  // Stage tracking
+  unlockedStages: ['countryside'], // Countryside is free starter
+  selectedStage: 'countryside',
+  // Stats tracking
+  totalAirTime: 0,
+  totalTricks: 0,
+  highestCombo: 0,
+  stagesPlayed: [],
 };
 
 /**
@@ -82,6 +123,24 @@ export function verifyCostCurveMonotonic(upgradeType: UpgradeType): boolean {
   return true;
 }
 
+export type VehiclePurchaseInfo = {
+  vehicleId: VehicleId;
+  name: string;
+  cost: number;
+  isUnlocked: boolean;
+  isSelected: boolean;
+  canAfford: boolean;
+};
+
+export type StagePurchaseInfo = {
+  stageId: StageId;
+  name: string;
+  cost: number;
+  isUnlocked: boolean;
+  isSelected: boolean;
+  canAfford: boolean;
+};
+
 export type ProgressionManager = {
   /** Load progress from storage */
   load: () => Promise<PlayerProgress>;
@@ -107,6 +166,40 @@ export type ProgressionManager = {
   incrementRuns: () => Promise<void>;
   /** Reset progress (for testing) */
   reset: () => Promise<void>;
+  // === VEHICLE METHODS ===
+  /** Purchase a vehicle (returns success) */
+  purchaseVehicle: (vehicleId: VehicleId) => Promise<boolean>;
+  /** Select a vehicle */
+  selectVehicle: (vehicleId: VehicleId) => Promise<boolean>;
+  /** Get vehicle purchase info */
+  getVehicleInfo: (vehicleId: VehicleId) => VehiclePurchaseInfo;
+  /** Get all vehicle infos */
+  getAllVehicleInfos: () => VehiclePurchaseInfo[];
+  /** Check if vehicle is unlocked */
+  isVehicleUnlocked: (vehicleId: VehicleId) => boolean;
+  /** Get selected vehicle ID */
+  getSelectedVehicle: () => VehicleId;
+  // === STAGE METHODS ===
+  /** Purchase a stage (returns success) */
+  purchaseStage: (stageId: StageId) => Promise<boolean>;
+  /** Select a stage */
+  selectStage: (stageId: StageId) => Promise<boolean>;
+  /** Get stage purchase info */
+  getStageInfo: (stageId: StageId) => StagePurchaseInfo;
+  /** Get all stage infos */
+  getAllStageInfos: () => StagePurchaseInfo[];
+  /** Check if stage is unlocked */
+  isStageUnlocked: (stageId: StageId) => boolean;
+  /** Get selected stage ID */
+  getSelectedStage: () => StageId;
+  // === STATS METHODS ===
+  /** Update stats after a run */
+  updateRunStats: (stats: {
+    airTime: number;
+    tricks: number;
+    combo: number;
+    stageId: StageId;
+  }) => Promise<void>;
 };
 
 /**
@@ -215,6 +308,164 @@ export function createProgressionManager(): ProgressionManager {
     await AsyncStorage.removeItem(STORAGE_KEY);
   };
 
+  // === VEHICLE METHODS ===
+
+  const purchaseVehicle = async (vehicleId: VehicleId): Promise<boolean> => {
+    // Check if already unlocked
+    if (progress.unlockedVehicles.includes(vehicleId)) {
+      return false;
+    }
+
+    const vehicle = getVehicle(vehicleId);
+    if (!vehicle || progress.coins < vehicle.unlockCost) {
+      return false;
+    }
+
+    const success = await spendCoins(vehicle.unlockCost);
+    if (success) {
+      progress.unlockedVehicles.push(vehicleId);
+      await save(progress);
+    }
+
+    return success;
+  };
+
+  const selectVehicle = async (vehicleId: VehicleId): Promise<boolean> => {
+    if (!progress.unlockedVehicles.includes(vehicleId)) {
+      return false;
+    }
+
+    progress.selectedVehicle = vehicleId;
+    // Also update upgrades to use this vehicle's upgrades
+    progress.upgrades = progress.vehicleUpgrades[vehicleId] || { ...DEFAULT_UPGRADES };
+    await save(progress);
+    return true;
+  };
+
+  const getVehicleInfo = (vehicleId: VehicleId): VehiclePurchaseInfo => {
+    const vehicle = getVehicle(vehicleId);
+    const isUnlocked = progress.unlockedVehicles.includes(vehicleId);
+    const isSelected = progress.selectedVehicle === vehicleId;
+    const canAfford = progress.coins >= vehicle.unlockCost;
+
+    return {
+      vehicleId,
+      name: vehicle.name,
+      cost: vehicle.unlockCost,
+      isUnlocked,
+      isSelected,
+      canAfford,
+    };
+  };
+
+  const getAllVehicleInfos = (): VehiclePurchaseInfo[] => {
+    const vehicleIds: VehicleId[] = [
+      'jeep',
+      'monster_truck',
+      'dune_buggy',
+      'tank',
+      'super_car',
+      'moon_rover',
+    ];
+    return vehicleIds.map(getVehicleInfo);
+  };
+
+  const isVehicleUnlocked = (vehicleId: VehicleId): boolean => {
+    return progress.unlockedVehicles.includes(vehicleId);
+  };
+
+  const getSelectedVehicle = (): VehicleId => {
+    return progress.selectedVehicle;
+  };
+
+  // === STAGE METHODS ===
+
+  const purchaseStage = async (stageId: StageId): Promise<boolean> => {
+    // Check if already unlocked
+    if (progress.unlockedStages.includes(stageId)) {
+      return false;
+    }
+
+    const stage = getStage(stageId);
+    if (!stage || progress.coins < stage.unlockCost) {
+      return false;
+    }
+
+    const success = await spendCoins(stage.unlockCost);
+    if (success) {
+      progress.unlockedStages.push(stageId);
+      await save(progress);
+    }
+
+    return success;
+  };
+
+  const selectStage = async (stageId: StageId): Promise<boolean> => {
+    if (!progress.unlockedStages.includes(stageId)) {
+      return false;
+    }
+
+    progress.selectedStage = stageId;
+    await save(progress);
+    return true;
+  };
+
+  const getStageInfo = (stageId: StageId): StagePurchaseInfo => {
+    const stage = getStage(stageId);
+    const isUnlocked = progress.unlockedStages.includes(stageId);
+    const isSelected = progress.selectedStage === stageId;
+    const canAfford = progress.coins >= stage.unlockCost;
+
+    return {
+      stageId,
+      name: stage.name,
+      cost: stage.unlockCost,
+      isUnlocked,
+      isSelected,
+      canAfford,
+    };
+  };
+
+  const getAllStageInfos = (): StagePurchaseInfo[] => {
+    const stageIds: StageId[] = [
+      'countryside',
+      'desert',
+      'arctic',
+      'moon',
+      'volcano',
+      'forest',
+    ];
+    return stageIds.map(getStageInfo);
+  };
+
+  const isStageUnlocked = (stageId: StageId): boolean => {
+    return progress.unlockedStages.includes(stageId);
+  };
+
+  const getSelectedStage = (): StageId => {
+    return progress.selectedStage;
+  };
+
+  // === STATS METHODS ===
+
+  const updateRunStats = async (stats: {
+    airTime: number;
+    tricks: number;
+    combo: number;
+    stageId: StageId;
+  }): Promise<void> => {
+    progress.totalAirTime += stats.airTime;
+    progress.totalTricks += stats.tricks;
+    progress.highestCombo = Math.max(progress.highestCombo, stats.combo);
+
+    // Track stages played
+    if (!progress.stagesPlayed.includes(stats.stageId)) {
+      progress.stagesPlayed.push(stats.stageId);
+    }
+
+    await save(progress);
+  };
+
   return {
     load,
     save,
@@ -228,6 +479,22 @@ export function createProgressionManager(): ProgressionManager {
     updateBestDistance,
     incrementRuns,
     reset,
+    // Vehicle methods
+    purchaseVehicle,
+    selectVehicle,
+    getVehicleInfo,
+    getAllVehicleInfos,
+    isVehicleUnlocked,
+    getSelectedVehicle,
+    // Stage methods
+    purchaseStage,
+    selectStage,
+    getStageInfo,
+    getAllStageInfos,
+    isStageUnlocked,
+    getSelectedStage,
+    // Stats methods
+    updateRunStats,
   };
 }
 

@@ -5,14 +5,23 @@
 import {
   calculateUpgradeCost,
   verifyCostCurveMonotonic,
+  createProgressionManager,
+  ProgressionManager,
 } from '../upgrades';
 import { UpgradeType, UPGRADE_MODIFIERS, calculateVehicleStats, BASE_VEHICLE_STATS } from '../../config/vehicleConfig';
 
 // Mock AsyncStorage
+const mockStorage: Record<string, string> = {};
 jest.mock('@react-native-async-storage/async-storage', () => ({
-  getItem: jest.fn(() => Promise.resolve(null)),
-  setItem: jest.fn(() => Promise.resolve()),
-  removeItem: jest.fn(() => Promise.resolve()),
+  getItem: jest.fn((key: string) => Promise.resolve(mockStorage[key] || null)),
+  setItem: jest.fn((key: string, value: string) => {
+    mockStorage[key] = value;
+    return Promise.resolve();
+  }),
+  removeItem: jest.fn((key: string) => {
+    delete mockStorage[key];
+    return Promise.resolve();
+  }),
 }));
 
 describe('Upgrades System', () => {
@@ -149,5 +158,239 @@ describe('Upgrade Modifiers', () => {
     for (const type of types) {
       expect(UPGRADE_MODIFIERS[type].perLevel).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('ProgressionManager - Vehicle Purchases', () => {
+  let manager: ProgressionManager;
+
+  beforeEach(async () => {
+    // Clear mock storage
+    Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
+    manager = createProgressionManager();
+    await manager.load();
+  });
+
+  describe('initial state', () => {
+    it('should have jeep unlocked by default', () => {
+      expect(manager.isVehicleUnlocked('jeep')).toBe(true);
+    });
+
+    it('should have jeep selected by default', () => {
+      expect(manager.getSelectedVehicle()).toBe('jeep');
+    });
+
+    it('should have other vehicles locked', () => {
+      expect(manager.isVehicleUnlocked('monster_truck')).toBe(false);
+      expect(manager.isVehicleUnlocked('tank')).toBe(false);
+    });
+  });
+
+  describe('getVehicleInfo', () => {
+    it('should return correct info for unlocked vehicle', () => {
+      const info = manager.getVehicleInfo('jeep');
+
+      expect(info.name).toBe('Jeep');
+      expect(info.isUnlocked).toBe(true);
+      expect(info.cost).toBe(0); // Free starter
+    });
+
+    it('should return correct info for locked vehicle', () => {
+      const info = manager.getVehicleInfo('monster_truck');
+
+      expect(info.name).toBe('Monster Truck');
+      expect(info.isUnlocked).toBe(false);
+      expect(info.cost).toBe(5000);
+    });
+  });
+
+  describe('purchaseVehicle', () => {
+    it('should fail without enough coins', async () => {
+      const result = await manager.purchaseVehicle('monster_truck');
+
+      expect(result).toBe(false);
+      expect(manager.isVehicleUnlocked('monster_truck')).toBe(false);
+    });
+
+    it('should succeed with enough coins', async () => {
+      await manager.addCoins(10000);
+      const result = await manager.purchaseVehicle('monster_truck');
+
+      expect(result).toBe(true);
+      expect(manager.isVehicleUnlocked('monster_truck')).toBe(true);
+      expect(manager.getProgress().coins).toBe(5000); // 10000 - 5000
+    });
+
+    it('should fail if already unlocked', async () => {
+      await manager.addCoins(10000);
+      await manager.purchaseVehicle('monster_truck');
+
+      const result = await manager.purchaseVehicle('monster_truck');
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('selectVehicle', () => {
+    it('should fail for locked vehicle', async () => {
+      const result = await manager.selectVehicle('tank');
+
+      expect(result).toBe(false);
+      expect(manager.getSelectedVehicle()).toBe('jeep');
+    });
+
+    it('should succeed for unlocked vehicle', async () => {
+      await manager.addCoins(10000);
+      await manager.purchaseVehicle('monster_truck');
+
+      const result = await manager.selectVehicle('monster_truck');
+
+      expect(result).toBe(true);
+      expect(manager.getSelectedVehicle()).toBe('monster_truck');
+    });
+  });
+
+  describe('getAllVehicleInfos', () => {
+    it('should return info for all vehicles', () => {
+      const infos = manager.getAllVehicleInfos();
+
+      expect(infos.length).toBe(6);
+      expect(infos.map((i) => i.vehicleId)).toContain('jeep');
+      expect(infos.map((i) => i.vehicleId)).toContain('moon_rover');
+    });
+  });
+});
+
+describe('ProgressionManager - Stage Purchases', () => {
+  let manager: ProgressionManager;
+
+  beforeEach(async () => {
+    Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
+    manager = createProgressionManager();
+    await manager.load();
+  });
+
+  describe('initial state', () => {
+    it('should have countryside unlocked by default', () => {
+      expect(manager.isStageUnlocked('countryside')).toBe(true);
+    });
+
+    it('should have countryside selected by default', () => {
+      expect(manager.getSelectedStage()).toBe('countryside');
+    });
+
+    it('should have other stages locked', () => {
+      expect(manager.isStageUnlocked('desert')).toBe(false);
+      expect(manager.isStageUnlocked('moon')).toBe(false);
+    });
+  });
+
+  describe('purchaseStage', () => {
+    it('should fail without enough coins', async () => {
+      const result = await manager.purchaseStage('desert');
+
+      expect(result).toBe(false);
+      expect(manager.isStageUnlocked('desert')).toBe(false);
+    });
+
+    it('should succeed with enough coins', async () => {
+      await manager.addCoins(5000);
+      const result = await manager.purchaseStage('desert');
+
+      expect(result).toBe(true);
+      expect(manager.isStageUnlocked('desert')).toBe(true);
+      expect(manager.getProgress().coins).toBe(2500); // 5000 - 2500
+    });
+  });
+
+  describe('selectStage', () => {
+    it('should fail for locked stage', async () => {
+      const result = await manager.selectStage('moon');
+
+      expect(result).toBe(false);
+    });
+
+    it('should succeed for unlocked stage', async () => {
+      await manager.addCoins(5000);
+      await manager.purchaseStage('desert');
+
+      const result = await manager.selectStage('desert');
+
+      expect(result).toBe(true);
+      expect(manager.getSelectedStage()).toBe('desert');
+    });
+  });
+});
+
+describe('ProgressionManager - Stats Tracking', () => {
+  let manager: ProgressionManager;
+
+  beforeEach(async () => {
+    Object.keys(mockStorage).forEach((key) => delete mockStorage[key]);
+    manager = createProgressionManager();
+    await manager.load();
+  });
+
+  describe('updateRunStats', () => {
+    it('should accumulate air time', async () => {
+      await manager.updateRunStats({
+        airTime: 5,
+        tricks: 3,
+        combo: 5,
+        stageId: 'countryside',
+      });
+
+      expect(manager.getProgress().totalAirTime).toBe(5);
+
+      await manager.updateRunStats({
+        airTime: 3,
+        tricks: 2,
+        combo: 3,
+        stageId: 'countryside',
+      });
+
+      expect(manager.getProgress().totalAirTime).toBe(8);
+    });
+
+    it('should track highest combo', async () => {
+      await manager.updateRunStats({
+        airTime: 0,
+        tricks: 0,
+        combo: 10,
+        stageId: 'countryside',
+      });
+
+      expect(manager.getProgress().highestCombo).toBe(10);
+
+      await manager.updateRunStats({
+        airTime: 0,
+        tricks: 0,
+        combo: 5, // Lower than previous
+        stageId: 'countryside',
+      });
+
+      expect(manager.getProgress().highestCombo).toBe(10); // Still 10
+    });
+
+    it('should track stages played', async () => {
+      await manager.updateRunStats({
+        airTime: 0,
+        tricks: 0,
+        combo: 0,
+        stageId: 'countryside',
+      });
+
+      expect(manager.getProgress().stagesPlayed).toContain('countryside');
+      expect(manager.getProgress().stagesPlayed.length).toBe(1);
+
+      // Playing same stage again shouldn't duplicate
+      await manager.updateRunStats({
+        airTime: 0,
+        tricks: 0,
+        combo: 0,
+        stageId: 'countryside',
+      });
+
+      expect(manager.getProgress().stagesPlayed.length).toBe(1);
+    });
   });
 });
