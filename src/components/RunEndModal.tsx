@@ -28,6 +28,10 @@ export type RunEndModalProps = {
   onRevive?: () => void;
   /** Whether revive is available */
   canRevive?: boolean;
+  /** Total trick points earned */
+  trickPoints?: number;
+  /** Maximum combo achieved */
+  maxCombo?: number;
 };
 
 export function RunEndModal({
@@ -42,6 +46,8 @@ export function RunEndModal({
   onDoubleCoins,
   onRevive,
   canRevive = false,
+  trickPoints = 0,
+  maxCombo = 0,
 }: RunEndModalProps) {
   const getTitle = (): string => {
     switch (endReason) {
@@ -109,6 +115,25 @@ export function RunEndModal({
               {formatTime(timeElapsed)}
             </Text>
           </View>
+
+          {/* Trick stats */}
+          {trickPoints > 0 && (
+            <View style={styles.statRow}>
+              <Text style={styles.statLabel}>Trick Points</Text>
+              <Text style={[styles.statValue, styles.trickValue]}>
+                {trickPoints}
+              </Text>
+            </View>
+          )}
+
+          {maxCombo > 0 && (
+            <View style={styles.statRow}>
+              <Text style={styles.statLabel}>Best Combo</Text>
+              <Text style={[styles.statValue, styles.comboValue]}>
+                {maxCombo}x
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Revive button (if available) */}
@@ -224,6 +249,12 @@ const styles = StyleSheet.create({
   },
   coinValue: {
     color: '#FFD700',
+  },
+  trickValue: {
+    color: '#FF6B35',
+  },
+  comboValue: {
+    color: '#9C27B0',
   },
   button: {
     width: '100%',
