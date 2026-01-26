@@ -46,24 +46,24 @@ export type MusicKey = (typeof MUSIC_KEYS)[keyof typeof MUSIC_KEYS];
  * - upgrade: kenney_ui/confirm.ogg
  * - new_best: kenney_ui/jingle.ogg
  */
-export const SOUND_PATHS: Record<SfxKey | MusicKey, string | null> = {
+export const SOUND_PATHS: Record<SfxKey | MusicKey, string> = {
   // SFX - Kenney.nl (CC0)
-  [SFX_KEYS.COIN_PICKUP]: null, // 'sfx/coin.ogg'
-  [SFX_KEYS.FUEL_PICKUP]: null, // 'sfx/powerup.ogg'
-  [SFX_KEYS.CRASH]: null, // 'sfx/crash.ogg'
-  [SFX_KEYS.FLIP]: null, // 'sfx/whoosh.ogg'
-  [SFX_KEYS.ENGINE_START]: null, // 'sfx/engine_start.ogg'
-  [SFX_KEYS.ENGINE_LOOP]: null, // 'sfx/engine_loop.ogg'
-  [SFX_KEYS.BRAKE]: null, // 'sfx/brake.ogg'
-  [SFX_KEYS.LANDING]: null, // 'sfx/landing.ogg'
-  [SFX_KEYS.UI_CLICK]: null, // 'sfx/click.ogg'
-  [SFX_KEYS.BUTTON_TAP]: null, // 'sfx/switch.ogg'
-  [SFX_KEYS.UPGRADE]: null, // 'sfx/confirm.ogg'
-  [SFX_KEYS.NEW_BEST]: null, // 'sfx/jingle.ogg'
+  [SFX_KEYS.COIN_PICKUP]: 'sfx/coin.ogg',
+  [SFX_KEYS.FUEL_PICKUP]: 'sfx/powerup.ogg',
+  [SFX_KEYS.CRASH]: 'sfx/crash.ogg',
+  [SFX_KEYS.FLIP]: 'sfx/whoosh.ogg',
+  [SFX_KEYS.ENGINE_START]: 'sfx/engine_start.ogg',
+  [SFX_KEYS.ENGINE_LOOP]: 'sfx/engine_loop.ogg',
+  [SFX_KEYS.BRAKE]: 'sfx/brake.ogg',
+  [SFX_KEYS.LANDING]: 'sfx/landing.ogg',
+  [SFX_KEYS.UI_CLICK]: 'sfx/click.ogg',
+  [SFX_KEYS.BUTTON_TAP]: 'sfx/switch.ogg',
+  [SFX_KEYS.UPGRADE]: 'sfx/confirm.ogg',
+  [SFX_KEYS.NEW_BEST]: 'sfx/jingle.ogg',
 
   // Music - OpenGameArt (CC0)
-  [MUSIC_KEYS.MENU_THEME]: null, // 'music/menu_theme.ogg'
-  [MUSIC_KEYS.GAMEPLAY_LOOP]: null, // 'music/gameplay_loop.ogg'
+  [MUSIC_KEYS.MENU_THEME]: 'music/menu_theme.ogg',
+  [MUSIC_KEYS.GAMEPLAY_LOOP]: 'music/gameplay_loop.ogg',
 };
 
 /**

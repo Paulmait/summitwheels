@@ -10,7 +10,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "typecheck": "tsc --noEmit",
-    "generate:assets": "node scripts/generateAssets.js"
+    "generate:assets": "node scripts/generateAssets.js",
+    "setup:audio": "node scripts/downloadAudio.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
