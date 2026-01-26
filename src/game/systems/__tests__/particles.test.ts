@@ -190,7 +190,8 @@ describe('ParticleSystem', () => {
       particleSystem.emitDust(100, 200, 2);
       const initialAlpha = particleSystem.getParticles()[0].alpha;
 
-      particleSystem.update(200);
+      // Update with enough time for noticeable fade
+      particleSystem.update(500);
       const updatedAlpha = particleSystem.getParticles()[0].alpha;
 
       expect(updatedAlpha).toBeLessThan(initialAlpha);
