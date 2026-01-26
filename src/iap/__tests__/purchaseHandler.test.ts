@@ -64,19 +64,9 @@ describe('purchaseHandler', () => {
       expect(EntitlementService.setEntitlement).toHaveBeenCalledWith('summitPass', true);
     });
 
-    it('should add 1000 coins for small coin pack purchase', async () => {
+    it('should add 5000 coins for small coin pack purchase', async () => {
       const purchase = {
         productId: CONSUMABLE_PRODUCTS.COINS_SMALL,
-      } as any;
-
-      await handlePurchaseSuccess(purchase);
-
-      expect(EntitlementService.addCoins).toHaveBeenCalledWith(1000);
-    });
-
-    it('should add 5000 coins for medium coin pack purchase', async () => {
-      const purchase = {
-        productId: CONSUMABLE_PRODUCTS.COINS_MEDIUM,
       } as any;
 
       await handlePurchaseSuccess(purchase);
@@ -84,14 +74,24 @@ describe('purchaseHandler', () => {
       expect(EntitlementService.addCoins).toHaveBeenCalledWith(5000);
     });
 
-    it('should add 15000 coins for large coin pack purchase', async () => {
+    it('should add 15000 coins for medium coin pack purchase', async () => {
+      const purchase = {
+        productId: CONSUMABLE_PRODUCTS.COINS_MEDIUM,
+      } as any;
+
+      await handlePurchaseSuccess(purchase);
+
+      expect(EntitlementService.addCoins).toHaveBeenCalledWith(15000);
+    });
+
+    it('should add 40000 coins for large coin pack purchase', async () => {
       const purchase = {
         productId: CONSUMABLE_PRODUCTS.COINS_LARGE,
       } as any;
 
       await handlePurchaseSuccess(purchase);
 
-      expect(EntitlementService.addCoins).toHaveBeenCalledWith(15000);
+      expect(EntitlementService.addCoins).toHaveBeenCalledWith(40000);
     });
 
     it('should not throw for unknown product', async () => {

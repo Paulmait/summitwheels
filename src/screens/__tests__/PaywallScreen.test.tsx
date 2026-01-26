@@ -161,9 +161,9 @@ describe('PaywallScreen', () => {
     const { getByText } = render(<PaywallScreen />);
 
     await waitFor(() => {
-      expect(getByText('1,000')).toBeTruthy();
       expect(getByText('5,000')).toBeTruthy();
       expect(getByText('15,000')).toBeTruthy();
+      expect(getByText('40,000')).toBeTruthy();
     });
   });
 

@@ -163,17 +163,17 @@ describe('IAPManager', () => {
   describe('coin pack values', () => {
     it('should return correct coin value for small pack', () => {
       const value = manager.getCoinPackValue(CONSUMABLE_PRODUCTS.COINS_SMALL);
-      expect(value).toBe(1000);
+      expect(value).toBe(5000);
     });
 
     it('should return correct coin value for medium pack', () => {
       const value = manager.getCoinPackValue(CONSUMABLE_PRODUCTS.COINS_MEDIUM);
-      expect(value).toBe(5000);
+      expect(value).toBe(15000);
     });
 
     it('should return correct coin value for large pack', () => {
       const value = manager.getCoinPackValue(CONSUMABLE_PRODUCTS.COINS_LARGE);
-      expect(value).toBe(15000);
+      expect(value).toBe(40000);
     });
 
     it('should return 0 for unknown product', () => {

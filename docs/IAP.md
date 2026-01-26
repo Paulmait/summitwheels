@@ -9,9 +9,9 @@ Summit Wheels implements in-app purchases using `react-native-iap` for both iOS 
 | `com.cienrios.summitwheels.removeads` | Non-consumable | $2.99 | Permanently removes interstitial ads |
 | `com.cienrios.summitwheels.pass.monthly` | Subscription | $4.99/mo | Summit Pass - no ads, bonus coins, exclusive content |
 | `com.cienrios.summitwheels.pass.yearly` | Subscription | $29.99/yr | Summit Pass (yearly) - save 50% |
-| `com.cienrios.summitwheels.coins.small` | Consumable | $0.99 | 1,000 coins |
-| `com.cienrios.summitwheels.coins.medium` | Consumable | $4.99 | 5,000 coins |
-| `com.cienrios.summitwheels.coins.large` | Consumable | $9.99 | 15,000 coins |
+| `com.cienrios.summitwheels.coins.small` | Consumable | $1.99 | 5,000 coins |
+| `com.cienrios.summitwheels.coins.medium` | Consumable | $4.99 | 15,000 coins |
+| `com.cienrios.summitwheels.coins.large` | Consumable | $9.99 | 40,000 coins |
 
 ## Entitlement Model
 
@@ -166,9 +166,9 @@ await IAPManager.purchaseMonthlyPass();
 await IAPManager.purchaseYearlyPass();
 
 // Purchase coins
-await IAPManager.purchaseCoinPack('small');  // 1,000 coins
-await IAPManager.purchaseCoinPack('medium'); // 5,000 coins
-await IAPManager.purchaseCoinPack('large');  // 15,000 coins
+await IAPManager.purchaseCoinPack('small');  // 5,000 coins
+await IAPManager.purchaseCoinPack('medium'); // 15,000 coins
+await IAPManager.purchaseCoinPack('large');  // 40,000 coins
 ```
 
 ### Restore Purchases
