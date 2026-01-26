@@ -23,6 +23,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
     isReady,
     toggleSfx,
     toggleMusic,
+    toggleHaptics,
     setSfxVolume,
     setMusicVolume,
   } = useAudio();
@@ -104,6 +105,17 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
             </View>
           </View>
         )}
+
+        {/* Haptics Toggle */}
+        <View style={styles.settingRow}>
+          <Text style={styles.settingLabel}>Haptics</Text>
+          <Switch
+            value={settings.hapticsEnabled}
+            onValueChange={toggleHaptics}
+            trackColor={{ false: '#444', true: '#FF6B35' }}
+            thumbColor={settings.hapticsEnabled ? '#FFF' : '#AAA'}
+          />
+        </View>
       </View>
 
       {/* About Section */}

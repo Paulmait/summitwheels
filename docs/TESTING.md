@@ -6,7 +6,7 @@
 npm test
 ```
 
-This runs all 102 unit tests via Jest.
+This runs all 107 unit tests via Jest.
 
 ## Test Commands
 
@@ -25,7 +25,7 @@ summit-wheels/
 ├── src/
 │   ├── audio/
 │   │   └── __tests__/
-│   │       └── AudioManager.test.ts  # 19 tests - Audio system
+│   │       └── AudioManager.test.ts  # 24 tests - Audio system + AudioToggleTest
 │   ├── game/
 │   │   ├── __tests__/
 │   │   │   ├── fuel.test.ts          # 14 tests - Fuel system
@@ -41,7 +41,7 @@ summit-wheels/
 │           └── i18n.test.ts          # 14 tests - Translations
 ```
 
-**Total: 102 tests across 9 test suites**
+**Total: 107 tests across 9 test suites**
 
 ## Golden Path Smoke Test
 

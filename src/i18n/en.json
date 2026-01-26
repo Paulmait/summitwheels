@@ -41,6 +41,7 @@
     "audio": "Audio",
     "soundEffects": "Sound Effects",
     "music": "Music",
+    "haptics": "Haptics",
     "sfxVolume": "SFX Volume",
     "musicVolume": "Music Volume",
     "about": "About",
