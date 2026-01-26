@@ -8,7 +8,8 @@
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SfxKey, MusicKey, SOUND_PATHS } from './audioKeys';
+import { SfxKey, MusicKey } from './audioKeys';
+import { getSfxAsset, getMusicAsset } from './soundAssets';
 
 export type AudioSettings = {
   sfxEnabled: boolean;
@@ -138,8 +139,8 @@ export function createAudioManager(): AudioManager {
    * Get an available sound from the pool or create a new one
    */
   const getSoundFromPool = async (key: SfxKey): Promise<Audio.Sound | null> => {
-    const path = SOUND_PATHS[key];
-    if (!path) return null; // No asset available yet
+    const asset = getSfxAsset(key);
+    if (!asset) return null; // No asset available yet
 
     let pool = soundPool.get(key);
     if (!pool) {
@@ -149,20 +150,22 @@ export function createAudioManager(): AudioManager {
 
     // Find an available sound (not playing)
     for (const sound of pool) {
-      const status = await sound.getStatusAsync();
-      if (status.isLoaded && !status.isPlaying) {
-        return sound;
+      try {
+        const status = await sound.getStatusAsync();
+        if (status.isLoaded && !status.isPlaying) {
+          return sound;
+        }
+      } catch {
+        // Sound may have been unloaded, skip it
       }
     }
 
     // Create new sound if pool not full
     if (pool.length < POOL_SIZE) {
       try {
-        // When assets are added, use require() here
-        // const { sound } = await Audio.Sound.createAsync(require(`../../assets/audio/${path}`));
-        // pool.push(sound);
-        // return sound;
-        return null; // Placeholder until assets are added
+        const { sound } = await Audio.Sound.createAsync(asset);
+        pool.push(sound);
+        return sound;
       } catch (error) {
         console.warn(`Failed to load sound ${key}:`, error);
         return null;
@@ -226,26 +229,26 @@ export function createAudioManager(): AudioManager {
       return;
     }
 
-    const path = SOUND_PATHS[key];
-    if (!path) {
-      currentMusicKey = key; // Placeholder
+    const asset = getMusicAsset(key);
+    if (!asset) {
+      currentMusicKey = key;
       playbackState.isMusicPlaying = true;
       return;
     }
 
     try {
-      // When assets are added, use require() here
-      // const { sound } = await Audio.Sound.createAsync(
-      //   require(`../../assets/audio/${path}`),
-      //   { isLooping: true, volume: settings.musicVolume }
-      // );
-      // currentMusic = sound;
-      // currentMusicKey = key;
-      // await sound.playAsync();
-      currentMusicKey = key; // Placeholder
+      const { sound } = await Audio.Sound.createAsync(
+        asset,
+        { isLooping: true, volume: settings.musicVolume }
+      );
+      currentMusic = sound;
+      currentMusicKey = key;
+      await sound.playAsync();
       playbackState.isMusicPlaying = true;
     } catch (error) {
       console.warn(`Failed to play music ${key}:`, error);
+      currentMusicKey = key;
+      playbackState.isMusicPlaying = false;
     }
   };
 

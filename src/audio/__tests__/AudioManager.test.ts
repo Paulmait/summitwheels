@@ -3,6 +3,12 @@
  * GREEN GATE: AudioToggleTest must pass
  */
 
+// Mock soundAssets BEFORE importing AudioManager
+jest.mock('../soundAssets', () => ({
+  getSfxAsset: jest.fn(() => 'mock-asset'),
+  getMusicAsset: jest.fn(() => 'mock-asset'),
+}));
+
 import {
   createAudioManager,
   AudioManager,

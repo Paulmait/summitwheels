@@ -7,7 +7,7 @@
  * - Settings
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Dimensions,
   ImageBackground,
@@ -17,6 +17,7 @@ import {
   View,
 } from 'react-native';
 import { getProgressionManager, PlayerProgress } from '../game/progression/upgrades';
+import { useUISound } from '../hooks/useUISound';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -36,11 +37,37 @@ export default function HomeScreen({
   onSettings,
 }: HomeScreenProps) {
   const [progress, setProgress] = useState<PlayerProgress | null>(null);
+  const { playClick, playConfirm } = useUISound();
 
   useEffect(() => {
     const manager = getProgressionManager();
     manager.load().then((p) => setProgress(p));
   }, []);
+
+  const handlePlay = useCallback(() => {
+    playConfirm();
+    onPlay();
+  }, [playConfirm, onPlay]);
+
+  const handleStageSelect = useCallback(() => {
+    playClick();
+    onStageSelect();
+  }, [playClick, onStageSelect]);
+
+  const handleVehicleSelect = useCallback(() => {
+    playClick();
+    onVehicleSelect();
+  }, [playClick, onVehicleSelect]);
+
+  const handleGarage = useCallback(() => {
+    playClick();
+    onGarage();
+  }, [playClick, onGarage]);
+
+  const handleSettings = useCallback(() => {
+    playClick();
+    onSettings();
+  }, [playClick, onSettings]);
 
   return (
     <View style={styles.container}>
@@ -78,7 +105,7 @@ export default function HomeScreen({
         {/* Play button */}
         <TouchableOpacity
           style={[styles.menuButton, styles.playButton]}
-          onPress={onPlay}
+          onPress={handlePlay}
           activeOpacity={0.8}
         >
           <Text style={styles.playButtonText}>PLAY</Text>
@@ -88,7 +115,7 @@ export default function HomeScreen({
         <View style={styles.secondaryRow}>
           <TouchableOpacity
             style={[styles.secondaryButton, styles.stageButton]}
-            onPress={onStageSelect}
+            onPress={handleStageSelect}
             activeOpacity={0.8}
           >
             <Text style={styles.secondaryIcon}>🏔️</Text>
@@ -97,7 +124,7 @@ export default function HomeScreen({
 
           <TouchableOpacity
             style={[styles.secondaryButton, styles.vehicleButton]}
-            onPress={onVehicleSelect}
+            onPress={handleVehicleSelect}
             activeOpacity={0.8}
           >
             <Text style={styles.secondaryIcon}>🚗</Text>
@@ -109,7 +136,7 @@ export default function HomeScreen({
         <View style={styles.tertiaryRow}>
           <TouchableOpacity
             style={[styles.tertiaryButton, styles.garageButton]}
-            onPress={onGarage}
+            onPress={handleGarage}
             activeOpacity={0.8}
           >
             <Text style={styles.tertiaryIcon}>🔧</Text>
@@ -118,7 +145,7 @@ export default function HomeScreen({
 
           <TouchableOpacity
             style={[styles.tertiaryButton, styles.settingsButton]}
-            onPress={onSettings}
+            onPress={handleSettings}
             activeOpacity={0.8}
           >
             <Text style={styles.tertiaryIcon}>⚙️</Text>

@@ -48,21 +48,30 @@ import { createTrickSystem, TrickSystem, Trick } from '../game/systems/tricks';
 import { createComboSystem, ComboSystem, ComboState } from '../game/systems/combo';
 import { createBoostSystem, BoostSystem, BoostState } from '../game/systems/boost';
 import { createParticleSystem, ParticleSystem, Particle } from '../game/systems/particles';
+import { createFloatingTextSystem, FloatingTextSystem, FloatingText } from '../game/systems/floatingText';
+import { createScreenShakeSystem, ScreenShakeSystem } from '../game/systems/screenShake';
+import { createCoinMagnetSystem, CoinMagnetSystem } from '../game/systems/coinMagnet';
+import { getProgressionManager } from '../game/progression/upgrades';
+import { getAudioManager } from '../audio/AudioManager';
+import { SFX_KEYS, MUSIC_KEYS } from '../audio/audioKeys';
 import { GameHud } from '../components/GameHud';
 import { TrickPopup } from '../components/TrickPopup';
 import { RunEndModal } from '../components/RunEndModal';
+import { PauseMenu } from '../components/PauseMenu';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 type GameScreenProps = {
   seed?: number;
   onRunEnd?: (stats: RunState['stats'] & { trickPoints: number; maxCombo: number }) => void;
+  onQuit?: () => void;
   bestDistance?: number;
 };
 
 export default function GameScreen({
   seed = Date.now(),
   onRunEnd,
+  onQuit,
   bestDistance = 0,
 }: GameScreenProps) {
   // Render state
@@ -77,6 +86,7 @@ export default function GameScreen({
   const [fuelPercentage, setFuelPercentage] = useState(100);
   const [isFuelLow, setIsFuelLow] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [showEndScreen, setShowEndScreen] = useState(false);
   const [localBestDistance, setLocalBestDistance] = useState(bestDistance);
 
@@ -86,6 +96,7 @@ export default function GameScreen({
   const [trickPoints, setTrickPoints] = useState(0);
   const [recentTricks, setRecentTricks] = useState<Trick[]>([]);
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([]);
 
   // Core refs
   const worldRef = useRef<PhysicsWorld | null>(null);
@@ -101,6 +112,9 @@ export default function GameScreen({
   const comboSystemRef = useRef<ComboSystem | null>(null);
   const boostSystemRef = useRef<BoostSystem | null>(null);
   const particleSystemRef = useRef<ParticleSystem | null>(null);
+  const floatingTextSystemRef = useRef<FloatingTextSystem | null>(null);
+  const screenShakeRef = useRef<ScreenShakeSystem | null>(null);
+  const coinMagnetRef = useRef<CoinMagnetSystem | null>(null);
 
   // Animation refs
   const frameRef = useRef<number>(0);
@@ -190,6 +204,9 @@ export default function GameScreen({
     comboSystemRef.current = createComboSystem();
     boostSystemRef.current = createBoostSystem();
     particleSystemRef.current = createParticleSystem();
+    floatingTextSystemRef.current = createFloatingTextSystem();
+    screenShakeRef.current = createScreenShakeSystem();
+    coinMagnetRef.current = createCoinMagnetSystem({ radius: 150, strength: 400 });
 
     // Initialize state
     setRunState(runManager.getState());
@@ -200,6 +217,7 @@ export default function GameScreen({
     setTrickPoints(0);
     setRecentTricks([]);
     setParticles([]);
+    setFloatingTexts([]);
     wasGroundedRef.current = true;
   }, [seed]);
 
@@ -239,7 +257,7 @@ export default function GameScreen({
    * Game loop
    */
   const gameLoop = useCallback(() => {
-    if (!isRunning) return;
+    if (!isRunning || isPaused) return;
 
     const world = worldRef.current;
     const car = carRef.current;
@@ -251,9 +269,12 @@ export default function GameScreen({
     const comboSystem = comboSystemRef.current;
     const boostSystem = boostSystemRef.current;
     const particleSystem = particleSystemRef.current;
+    const floatingTextSystem = floatingTextSystemRef.current;
+    const screenShake = screenShakeRef.current;
+    const coinMagnet = coinMagnetRef.current;
 
     if (!world || !car || !terrain || !runManager || !pickupSpawner || !fuelSystem) return;
-    if (!trickSystem || !comboSystem || !boostSystem || !particleSystem) return;
+    if (!trickSystem || !comboSystem || !boostSystem || !particleSystem || !floatingTextSystem || !screenShake || !coinMagnet) return;
 
     const currentTime = performance.now();
     const deltaTime = Math.min(currentTime - lastTimeRef.current, 32);
@@ -329,9 +350,19 @@ export default function GameScreen({
       setRecentTricks(trickSystem.getState().recentTricks);
     }
 
-    // Landing particles
+    // Landing particles, sound, and screen shake
     if (isGrounded && !wasGrounded) {
       particleSystem.emitLandingDust(carPos.x, carPos.y + 20, carVelocity.y);
+      // Play landing sound with haptic if hard landing
+      const audioManager = getAudioManager();
+      const landingIntensity = Math.abs(carVelocity.y);
+      if (landingIntensity > 5) {
+        audioManager.playSfx(SFX_KEYS.LANDING);
+        audioManager.triggerHaptic('medium');
+        // Screen shake proportional to landing impact
+        const shakeIntensity = Math.min(landingIntensity / 20, 0.5);
+        screenShake.shake(shakeIntensity, 150);
+      }
     }
 
     // Wheel dust while driving
@@ -358,19 +389,30 @@ export default function GameScreen({
       boostSystem.stopBoost();
     }
 
-    // Update particles
+    // Update particles, floating text, and screen shake
     particleSystem.update(deltaTime);
+    floatingTextSystem.update(deltaTime);
+    screenShake.update(deltaTime);
 
     // Update state refs
     wasGroundedRef.current = isGrounded;
     setComboState(comboSystem.getState());
     setBoostState(boostSystem.getState());
     setParticles(particleSystem.getParticles());
+    setFloatingTexts(floatingTextSystem.getTexts());
 
     // Check for crash (car flipped)
     if (car.isFlipped()) {
       // Emit crash explosion
       particleSystem.emitExplosion(carPos.x, carPos.y);
+
+      // Screen shake on crash (strong)
+      screenShake.shake(1.0, 300);
+
+      // Play crash sound
+      const audioManager = getAudioManager();
+      audioManager.playSfx(SFX_KEYS.CRASH);
+      audioManager.triggerHaptic('heavy');
 
       runManager.crash();
       setIsRunning(false);
@@ -379,8 +421,16 @@ export default function GameScreen({
       const finalState = runManager.getState();
       setRunState(finalState);
 
+      // PERSIST COINS TO PLAYER WALLET
+      if (finalState.stats.coins > 0) {
+        const progressionManager = getProgressionManager();
+        progressionManager.addCoins(finalState.stats.coins);
+      }
+
       if (finalState.stats.distance > localBestDistance) {
         setLocalBestDistance(finalState.stats.distance);
+        // Play new best sound
+        audioManager.playSfx(SFX_KEYS.NEW_BEST);
       }
 
       onRunEnd?.({
@@ -391,9 +441,13 @@ export default function GameScreen({
       return;
     }
 
-    // Check pickup collisions
+    // Apply coin magnet effect (pull nearby coins toward player)
     const pickups = pickupSpawner.getPickups();
+    coinMagnet.update(pickups, carPos.x, carPos.y, deltaTime);
+
+    // Check pickup collisions
     const collided = checkPickupCollisions(car.body, pickups);
+    const audioManager = getAudioManager();
     collided.forEach((pickup) => {
       const collected = pickupSpawner.collectPickup(pickup.body.id);
       if (collected) {
@@ -401,8 +455,21 @@ export default function GameScreen({
           runManager.addCoins(collected.value);
           // Coin sparkle effect
           particleSystem.emitSparkle(pickup.body.position.x, pickup.body.position.y);
+          // Floating "+1" text
+          floatingTextSystem.addCoinPickup(collected.value, pickup.body.position.x, pickup.body.position.y - 30);
+          // Play coin sound
+          audioManager.playSfx(SFX_KEYS.COIN_PICKUP);
         } else if (collected.type === 'fuel') {
           fuelSystem.refill(collected.value);
+          // Floating "+FUEL" text
+          floatingTextSystem.add('+FUEL', pickup.body.position.x, pickup.body.position.y - 30, {
+            color: '#00FF00',
+            fontSize: 26,
+            lifetime: 1000,
+            velocityY: -70,
+          });
+          // Play fuel pickup sound
+          audioManager.playSfx(SFX_KEYS.FUEL_PICKUP);
         }
         world.remove(collected.body);
       }
@@ -432,22 +499,27 @@ export default function GameScreen({
     const removedPickups = pickupSpawner.removeBefore(removeThreshold);
     removedPickups.forEach((p) => world.remove(p.body));
 
-    // Calculate camera
+    // Calculate camera with screen shake offset
     const camera = calculateCamera(car, {
       screenWidth: SCREEN_WIDTH,
       screenHeight: SCREEN_HEIGHT,
       followOffsetX: SCREEN_WIDTH * 0.25,
     });
+    const shakeOffset = screenShake.getOffset();
 
-    // Update render state
+    // Update render state (apply shake offset to camera)
     const bodies = world.getBodies();
-    const newRenderState = createRenderState(bodies, camera.x, camera.y);
+    const newRenderState = createRenderState(
+      bodies,
+      camera.x + shakeOffset.x,
+      camera.y + shakeOffset.y
+    );
     setRenderState(newRenderState);
     setRunState(runManager.getState());
 
     // Continue loop
     frameRef.current = requestAnimationFrame(gameLoop);
-  }, [isRunning, onRunEnd, localBestDistance, isCarGrounded]);
+  }, [isRunning, isPaused, onRunEnd, localBestDistance, isCarGrounded]);
 
   // Input handlers
   const handleGasDown = useCallback(() => {
@@ -467,6 +539,35 @@ export default function GameScreen({
   }, []);
 
   /**
+   * Pause game
+   */
+  const handlePause = useCallback(() => {
+    if (isRunning && !showEndScreen) {
+      setIsPaused(true);
+      // Release controls when pausing
+      runStateRef.current?.setGas(false);
+      runStateRef.current?.setBrake(false);
+    }
+  }, [isRunning, showEndScreen]);
+
+  /**
+   * Resume game
+   */
+  const handleResume = useCallback(() => {
+    setIsPaused(false);
+    lastTimeRef.current = performance.now(); // Reset time to prevent jump
+  }, []);
+
+  /**
+   * Quit to menu
+   */
+  const handleQuitToMenu = useCallback(() => {
+    setIsPaused(false);
+    setIsRunning(false);
+    onQuit?.();
+  }, [onQuit]);
+
+  /**
    * Restart game
    */
   const restartGame = useCallback(() => {
@@ -481,10 +582,20 @@ export default function GameScreen({
     comboSystemRef.current?.reset();
     boostSystemRef.current?.reset();
     particleSystemRef.current?.clear();
+    floatingTextSystemRef.current?.clear();
+    screenShakeRef.current?.reset();
 
     initGame();
     startGame();
   }, [initGame, startGame]);
+
+  /**
+   * Restart from pause menu
+   */
+  const restartFromPause = useCallback(() => {
+    setIsPaused(false);
+    restartGame();
+  }, [restartGame]);
 
   // Initialize on mount
   useEffect(() => {
@@ -602,6 +713,50 @@ export default function GameScreen({
   };
 
   /**
+   * Render floating texts
+   */
+  const renderFloatingTexts = () => {
+    return floatingTexts.map((text) => {
+      const screenPos = worldToScreen(
+        text.x,
+        text.y,
+        renderState.cameraX,
+        renderState.cameraY
+      );
+
+      if (
+        screenPos.x < -100 ||
+        screenPos.x > SCREEN_WIDTH + 100 ||
+        screenPos.y < -100 ||
+        screenPos.y > SCREEN_HEIGHT + 100
+      ) {
+        return null;
+      }
+
+      return (
+        <Text
+          key={text.id}
+          style={{
+            position: 'absolute',
+            left: screenPos.x,
+            top: screenPos.y,
+            fontSize: text.fontSize,
+            fontWeight: 'bold',
+            color: text.color,
+            opacity: text.alpha,
+            textShadowColor: '#000',
+            textShadowOffset: { width: 1, height: 1 },
+            textShadowRadius: 2,
+            transform: [{ translateX: -20 }], // Center the text
+          }}
+        >
+          {text.text}
+        </Text>
+      );
+    });
+  };
+
+  /**
    * Render particles
    */
   const renderParticles = () => {
@@ -654,13 +809,14 @@ export default function GameScreen({
       <View style={styles.gameWorld}>
         {renderState.bodies.map(renderBody)}
         {renderParticles()}
+        {renderFloatingTexts()}
       </View>
 
       {/* Trick Popup */}
       {isRunning && <TrickPopup tricks={recentTricks} />}
 
       {/* HUD */}
-      {isRunning && (
+      {isRunning && !isPaused && (
         <GameHud
           distance={runState?.stats.distance ?? 0}
           fuelPercentage={fuelPercentage}
@@ -672,6 +828,17 @@ export default function GameScreen({
           boostState={boostState ?? undefined}
           trickPoints={trickPoints}
         />
+      )}
+
+      {/* Pause Button */}
+      {isRunning && !showEndScreen && !isPaused && (
+        <TouchableOpacity
+          style={styles.pauseButton}
+          onPress={handlePause}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.pauseIcon}>| |</Text>
+        </TouchableOpacity>
       )}
 
       {/* Controls */}
@@ -739,6 +906,17 @@ export default function GameScreen({
           maxCombo={comboState?.maxCombo ?? 0}
         />
       )}
+
+      {/* Pause Menu */}
+      <PauseMenu
+        visible={isPaused}
+        onResume={handleResume}
+        onRestart={restartFromPause}
+        onQuit={handleQuitToMenu}
+        distance={runState?.stats.distance ?? 0}
+        coins={runState?.stats.coins ?? 0}
+        timeElapsed={runState?.stats.timeElapsed ?? 0}
+      />
     </View>
   );
 }
@@ -758,6 +936,25 @@ const styles = StyleSheet.create({
   },
   body: {
     position: 'absolute',
+  },
+  pauseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  pauseIcon: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    letterSpacing: 2,
   },
   controls: {
     position: 'absolute',
