@@ -10,15 +10,19 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
+    "bcryptjs": "^3.0.3",
     "chart.js": "^4.4.1",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.1",
+    "otpauth": "^9.4.1",
+    "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.0",
-    "jspdf": "^2.5.1",
-    "jspdf-autotable": "^3.8.1"
+    "react-router-dom": "^6.21.0"
   },
   "devDependencies": {
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",

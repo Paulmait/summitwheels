@@ -42,3 +42,21 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Supabase
+.supabase/
+supabase/.temp/
+
+# Unity
+unity/*/Library/
+unity/*/Logs/
+unity/*/UserSettings/
+unity/*/*.csproj
+unity/*/*.slnx
+unity/*/*.sln
+
+# Coverage
+coverage/
+
+# Misc
+nul
