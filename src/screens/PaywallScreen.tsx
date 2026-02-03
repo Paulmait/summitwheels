@@ -205,6 +205,7 @@ export function PaywallScreen({ onClose }: PaywallScreenProps): React.ReactEleme
                     <Text style={styles.priceText}>
                       {getSubscriptionPrice(SUBSCRIPTION_PRODUCTS.MONTHLY_PASS)}
                     </Text>
+                    <Text style={styles.subscriptionPeriod}>/month</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -227,9 +228,28 @@ export function PaywallScreen({ onClose }: PaywallScreenProps): React.ReactEleme
                     <Text style={styles.priceText}>
                       {getSubscriptionPrice(SUBSCRIPTION_PRODUCTS.YEARLY_PASS)}
                     </Text>
+                    <Text style={styles.subscriptionPeriod}>/year</Text>
                     <Text style={styles.savingsText}>Save 50%</Text>
                   </>
                 )}
+              </TouchableOpacity>
+            </View>
+
+            {/* SUBSCRIPTION TERMS DISCLOSURE - Required by Apple App Store */}
+            <View style={styles.subscriptionTerms}>
+              <Text style={styles.termsTitle}>Subscription Terms</Text>
+              <Text style={styles.termsText}>
+                {'\u2022'} Payment charged to your Apple ID account at confirmation{'\n'}
+                {'\u2022'} Subscription auto-renews unless cancelled at least 24 hours before end of current period{'\n'}
+                {'\u2022'} Account charged for renewal within 24 hours prior to end of current period{'\n'}
+                {'\u2022'} Manage subscriptions and cancel anytime in Account Settings{'\n'}
+                {'\u2022'} Summit Pass includes: Ad-free gameplay, 2x coin bonus, exclusive content
+              </Text>
+              <TouchableOpacity onPress={() => {/* Link to terms */}}>
+                <Text style={styles.termsLink}>Privacy Policy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => {/* Link to terms */}}>
+                <Text style={styles.termsLink}>Terms of Service</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -521,6 +541,35 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 14,
     textDecorationLine: 'underline',
+  },
+  subscriptionPeriod: {
+    color: '#aaa',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  subscriptionTerms: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+  },
+  termsTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  termsText: {
+    color: '#888',
+    fontSize: 11,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  termsLink: {
+    color: '#4CAF50',
+    fontSize: 12,
+    textDecorationLine: 'underline',
+    marginTop: 4,
   },
 });
 

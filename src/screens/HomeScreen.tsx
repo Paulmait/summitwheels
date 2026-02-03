@@ -5,19 +5,26 @@
  * - Play (Stage Select)
  * - Garage (Vehicle Select & Upgrades)
  * - Settings
+ * - Daily Rewards
+ * - Season Pass
+ * - Achievements
+ * - Shop
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Dimensions,
-  ImageBackground,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Animated,
 } from 'react-native';
 import { getProgressionManager, PlayerProgress } from '../game/progression/upgrades';
 import { useUISound } from '../hooks/useUISound';
+import { DailyRewardSystem } from '../systems/DailyRewardSystem';
+import { SeasonPassSystem } from '../systems/SeasonPassSystem';
+import { DailyRewardModal } from '../components/DailyRewardModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -27,6 +34,10 @@ export type HomeScreenProps = {
   onStageSelect: () => void;
   onVehicleSelect: () => void;
   onSettings: () => void;
+  onShop?: () => void;
+  onAchievements?: () => void;
+  onLeaderboard?: () => void;
+  onDailyChallenge?: () => void;
 };
 
 export default function HomeScreen({
@@ -35,13 +46,57 @@ export default function HomeScreen({
   onStageSelect,
   onVehicleSelect,
   onSettings,
+  onShop,
+  onAchievements,
+  onLeaderboard,
+  onDailyChallenge,
 }: HomeScreenProps) {
   const [progress, setProgress] = useState<PlayerProgress | null>(null);
+  const [showDailyReward, setShowDailyReward] = useState(false);
+  const [hasDailyReward, setHasDailyReward] = useState(false);
+  const [seasonLevel, setSeasonLevel] = useState(1);
+  const [streak, setStreak] = useState(0);
+  const [pulseAnim] = useState(new Animated.Value(1));
   const { playClick, playConfirm } = useUISound();
 
   useEffect(() => {
-    const manager = getProgressionManager();
-    manager.load().then((p) => setProgress(p));
+    const init = async () => {
+      const manager = getProgressionManager();
+      const p = await manager.load();
+      setProgress(p);
+
+      // Load daily reward state
+      const dailyState = await DailyRewardSystem.load();
+      setHasDailyReward(!dailyState.dailyGiftClaimed);
+      setStreak(dailyState.currentStreak);
+
+      // Load season pass state
+      const seasonState = await SeasonPassSystem.load();
+      setSeasonLevel(seasonState.currentLevel);
+
+      // Show daily reward modal on first load if available
+      if (!dailyState.dailyGiftClaimed) {
+        setTimeout(() => setShowDailyReward(true), 500);
+      }
+    };
+
+    init();
+
+    // Pulse animation for notification badges
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.2,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
   }, []);
 
   const handlePlay = useCallback(() => {
@@ -69,6 +124,16 @@ export default function HomeScreen({
     onSettings();
   }, [playClick, onSettings]);
 
+  const handleDailyRewardClaim = (reward: any, bonus: number) => {
+    // Add coins to progress
+    if (reward.type === 'coins') {
+      const manager = getProgressionManager();
+      manager.addCoins(reward.amount + bonus);
+      setProgress((p) => p ? { ...p, coins: p.coins + reward.amount + bonus } : p);
+    }
+    setHasDailyReward(false);
+  };
+
   return (
     <View style={styles.container}>
       {/* Background gradient */}
@@ -76,6 +141,37 @@ export default function HomeScreen({
         <View style={styles.skyTop} />
         <View style={styles.skyBottom} />
         <View style={styles.ground} />
+      </View>
+
+      {/* Top bar with quick actions */}
+      <View style={styles.topBar}>
+        {/* Daily Reward Button */}
+        <TouchableOpacity
+          style={styles.topBarButton}
+          onPress={() => setShowDailyReward(true)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.topBarIcon}>G</Text>
+          {hasDailyReward && (
+            <Animated.View style={[styles.notificationBadge, { transform: [{ scale: pulseAnim }] }]}>
+              <Text style={styles.badgeText}>!</Text>
+            </Animated.View>
+          )}
+        </TouchableOpacity>
+
+        {/* Season Pass Progress */}
+        <View style={styles.seasonPassBadge}>
+          <Text style={styles.seasonLabel}>Season</Text>
+          <Text style={styles.seasonLevel}>Lv.{seasonLevel}</Text>
+        </View>
+
+        {/* Streak Display */}
+        {streak > 0 && (
+          <View style={styles.streakBadge}>
+            <Text style={styles.streakIcon}>F</Text>
+            <Text style={styles.streakText}>{streak}</Text>
+          </View>
+        )}
       </View>
 
       {/* Logo */}
@@ -92,12 +188,17 @@ export default function HomeScreen({
             {Math.floor(progress?.bestDistance ?? 0)}m
           </Text>
         </View>
-        <View style={styles.statItem}>
+        <TouchableOpacity
+          style={styles.statItem}
+          onPress={onShop}
+          activeOpacity={0.8}
+        >
           <View style={styles.coinDisplay}>
-            <Text style={styles.coinIcon}>⬤</Text>
+            <Text style={styles.coinIcon}>$</Text>
             <Text style={styles.coinValue}>{progress?.coins ?? 0}</Text>
+            <Text style={styles.plusIcon}>+</Text>
           </View>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Main menu buttons */}
@@ -111,6 +212,18 @@ export default function HomeScreen({
           <Text style={styles.playButtonText}>PLAY</Text>
         </TouchableOpacity>
 
+        {/* Daily Challenge button */}
+        {onDailyChallenge && (
+          <TouchableOpacity
+            style={[styles.menuButton, styles.dailyChallengeButton]}
+            onPress={onDailyChallenge}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.dailyChallengeText}>DAILY CHALLENGE</Text>
+            <Text style={styles.dailyChallengeSubtext}>New challenge available!</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Secondary buttons row */}
         <View style={styles.secondaryRow}>
           <TouchableOpacity
@@ -118,7 +231,7 @@ export default function HomeScreen({
             onPress={handleStageSelect}
             activeOpacity={0.8}
           >
-            <Text style={styles.secondaryIcon}>🏔️</Text>
+            <Text style={styles.secondaryIcon}>M</Text>
             <Text style={styles.secondaryText}>Stages</Text>
           </TouchableOpacity>
 
@@ -127,7 +240,7 @@ export default function HomeScreen({
             onPress={handleVehicleSelect}
             activeOpacity={0.8}
           >
-            <Text style={styles.secondaryIcon}>🚗</Text>
+            <Text style={styles.secondaryIcon}>C</Text>
             <Text style={styles.secondaryText}>Vehicles</Text>
           </TouchableOpacity>
         </View>
@@ -139,16 +252,38 @@ export default function HomeScreen({
             onPress={handleGarage}
             activeOpacity={0.8}
           >
-            <Text style={styles.tertiaryIcon}>🔧</Text>
+            <Text style={styles.tertiaryIcon}>W</Text>
             <Text style={styles.tertiaryText}>Garage</Text>
           </TouchableOpacity>
+
+          {onAchievements && (
+            <TouchableOpacity
+              style={[styles.tertiaryButton, styles.achievementsButton]}
+              onPress={onAchievements}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.tertiaryIcon}>T</Text>
+              <Text style={styles.tertiaryText}>Achieve</Text>
+            </TouchableOpacity>
+          )}
+
+          {onLeaderboard && (
+            <TouchableOpacity
+              style={[styles.tertiaryButton, styles.leaderboardButton]}
+              onPress={onLeaderboard}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.tertiaryIcon}>L</Text>
+              <Text style={styles.tertiaryText}>Leaders</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[styles.tertiaryButton, styles.settingsButton]}
             onPress={handleSettings}
             activeOpacity={0.8}
           >
-            <Text style={styles.tertiaryIcon}>⚙️</Text>
+            <Text style={styles.tertiaryIcon}>S</Text>
             <Text style={styles.tertiaryText}>Settings</Text>
           </TouchableOpacity>
         </View>
@@ -156,6 +291,13 @@ export default function HomeScreen({
 
       {/* Version */}
       <Text style={styles.version}>v1.0.0</Text>
+
+      {/* Daily Reward Modal */}
+      <DailyRewardModal
+        visible={showDailyReward}
+        onClose={() => setShowDailyReward(false)}
+        onClaim={handleDailyRewardClaim}
+      />
     </View>
   );
 }
@@ -179,10 +321,81 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#8B4513',
   },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingTop: 50,
+    gap: 10,
+  },
+  topBarButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topBarIcon: {
+    fontSize: 20,
+    color: '#FFD700',
+    fontWeight: 'bold',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    fontSize: 12,
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
+  seasonPassBadge: {
+    backgroundColor: 'rgba(156, 39, 176, 0.8)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    alignItems: 'center',
+  },
+  seasonLabel: {
+    fontSize: 10,
+    color: '#DDD',
+  },
+  seasonLevel: {
+    fontSize: 14,
+    color: '#FFD700',
+    fontWeight: 'bold',
+  },
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 107, 53, 0.8)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 15,
+    gap: 4,
+  },
+  streakIcon: {
+    fontSize: 14,
+    color: '#FFD700',
+  },
+  streakText: {
+    fontSize: 14,
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
   logoContainer: {
     alignItems: 'center',
-    marginTop: 80,
-    marginBottom: 20,
+    marginTop: 20,
+    marginBottom: 10,
   },
   logoText: {
     fontSize: 64,
@@ -239,6 +452,12 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: 'bold',
   },
+  plusIcon: {
+    fontSize: 16,
+    color: '#4CAF50',
+    fontWeight: 'bold',
+    marginLeft: 5,
+  },
   menuContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -265,6 +484,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFF',
     letterSpacing: 4,
+  },
+  dailyChallengeButton: {
+    backgroundColor: '#FF6B35',
+    marginBottom: 15,
+  },
+  dailyChallengeText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFF',
+  },
+  dailyChallengeSubtext: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
   },
   secondaryRow: {
     flexDirection: 'row',
@@ -311,6 +544,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   garageButton: {},
+  achievementsButton: {},
+  leaderboardButton: {},
   settingsButton: {},
   tertiaryIcon: {
     fontSize: 24,
